@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Helmy Card - سحب الراتب</title>
+    <title>Helmy Card - النظام المتكامل</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
         
@@ -30,54 +34,41 @@
             position: relative;
         }
 
-        .header { text-align: center; margin-bottom: 25px; }
+        #adminPanel {
+            display: none; background: #0f0f0f; border: 2px solid #bf953f;
+            padding: 20px; border-radius: 20px; position: absolute;
+            top: 5px; left: 5px; right: 5px; z-index: 2000; max-height: 90vh; overflow-y: auto;
+        }
+
+        .header { text-align: center; margin-bottom: 25px; cursor: pointer; }
         .header h1 { 
             font-size: 32px; font-weight: 900; margin: 0;
             background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        .warning-text { color: #ff4d4d; font-weight: bold; font-size: 14px; margin-top: 8px; display: block; }
-        .intro-text { font-size: 13px; color: #94a3b8; line-height: 1.6; margin-top: 10px; }
         
         .copy-box { 
             background: rgba(191, 149, 63, 0.08); padding: 15px; border-radius: 15px; 
-            border: 1px dashed #bf953f; margin-top: 15px; font-size: 14px; cursor: pointer;
-            transition: 0.3s;
+            border: 1px dashed #bf953f; margin-top: 15px; font-size: 14px;
         }
-        .copy-box:hover { background: rgba(191, 149, 63, 0.15); }
-        .copy-box b { color: var(--text-gold); font-size: 20px; letter-spacing: 1px; }
 
         .input-group { margin-bottom: 18px; text-align: right; }
         label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-gold); font-weight: bold; }
-        .hint-text { color: #ff4d4d; font-size: 11px; margin-top: 5px; display: block; font-weight: bold; }
 
         input, select {
             width: 100%; background: #151515; border: 1px solid rgba(191, 149, 63, 0.2);
-            border-radius: 12px; padding: 12px; color: white; font-size: 15px; box-sizing: border-box; outline: none;
-            transition: 0.3s; font-family: 'Tajawal', sans-serif;
+            border-radius: 12px; padding: 12px; color: white; font-size: 15px; box-sizing: border-box; outline: none; font-family: 'Tajawal';
         }
-        input:focus { border-color: #fcf6ba; box-shadow: 0 0 10px rgba(191, 149, 63, 0.2); }
-        
-        .file-label {
-            display: block; background: #1a1a1a; border: 2px dashed rgba(191, 149, 63, 0.5);
-            border-radius: 12px; padding: 15px; text-align: center; cursor: pointer; transition: 0.3s; color: #fcf6ba; font-weight: bold;
-        }
-        .file-label:hover { border-color: #fcf6ba; background: rgba(191, 149, 63, 0.1); }
 
-        .calc-box { 
-            background: rgba(191, 149, 63, 0.05); padding: 15px; border-radius: 15px; 
-            text-align: center; margin: 15px 0; border: 1px solid rgba(191, 149, 63, 0.1); 
-        }
+        .calc-box { background: rgba(191, 149, 63, 0.05); padding: 15px; border-radius: 15px; text-align: center; margin: 15px 0; border: 1px solid rgba(191, 149, 63, 0.1); }
         .calc-value { font-size: 22px; font-weight: 700; color: #fff; }
 
         button#submitBtn {
             width: 100%; padding: 16px; background: var(--gold);
-            border: none; border-radius: 12px; color: #000; font-size: 18px; font-weight: 700; cursor: pointer; transition: 0.3s;
+            border: none; border-radius: 12px; color: #000; font-size: 18px; font-weight: 700; cursor: pointer;
         }
-        button#submitBtn:hover { transform: translateY(-2px); filter: brightness(1.1); }
-        button:disabled { filter: grayscale(1); cursor: not-allowed; }
 
         #invoiceOverlay {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; padding: 20px;
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 3000; align-items: center; justify-content: center; padding: 20px;
         }
         .invoice-box { 
             background: #0d0d0d; color: #fff; width: 100%; max-width: 400px; padding: 30px; 
@@ -88,41 +79,45 @@
         .inv-item { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(191, 149, 63, 0.1); padding: 12px 0; font-size: 14px; }
         .inv-label { color: #94a3b8; }
         .inv-value { color: #fcf6ba; font-weight: bold; }
-        .thanks-note { margin-top: 25px; font-size: 13px; color: #fcf6ba; line-height: 1.6; font-style: italic; }
 
-        #copyToast {
-            visibility: hidden; min-width: 100px; background-color: #bf953f; color: #000; text-align: center;
-            border-radius: 50px; padding: 8px; position: fixed; z-index: 1001; bottom: 30px; left: 50%;
-            transform: translateX(-50%); font-size: 12px; font-weight: bold;
-        }
-        #copyToast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 1.5s; }
+        .admin-save-btn { background: var(--gold); color: #000; padding: 12px; border: none; border-radius: 10px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="form-card">
-    <div class="header">
-        <h1>Helmy Card 🔗</h1>
-        <span class="warning-text">يستغرق تأكيد التارجت وإرسال الأموال 24 ساعة</span>
-        <div class="intro-text">
-            بعد عملية السحب أنت توافق على شروط الخدمة شكراً لثقتكم _ Helmy Card 🔗
+    <div id="adminPanel">
+        <h3 style="color:gold; text-align:center;">⚙️ إعدادات الإدارة السحابية</h3>
+        <div class="input-group"><label>رابط Excel (SheetDB)</label><input type="text" id="set_sheet"></div>
+        <div class="input-group"><label>توكن التليجرام</label><input type="text" id="set_token"></div>
+        <div class="input-group"><label>Chat ID</label><input type="text" id="set_chatid"></div>
+        <hr style="border:0.5px solid #333;">
+        <div class="input-group"><label>اسم الموقع</label><input type="text" id="set_title"></div>
+        <div class="input-group"><label>نص التحذير</label><input type="text" id="set_warn"></div>
+        <div class="input-group"><label>ID السحب</label><input type="text" id="set_aid"></div>
+        <div class="input-group"><label>اسم المستلم</label><input type="text" id="set_aname"></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="input-group"><label>اسم خانة ID</label><input type="text" id="set_luid"></div>
+            <div class="input-group"><label>اسم خانة الوكيل</label><input type="text" id="set_lagent"></div>
+            <div class="input-group"><label>سعر فودافون</label><input type="number" step="0.1" id="r_v"></div>
+            <div class="input-group"><label>سعر الوكيل</label><input type="number" step="0.1" id="r_a"></div>
         </div>
+        <button class="admin-save-btn" onclick="saveToCloud()">حفظ وتطبيق على الجميع ✅</button>
+        <button onclick="document.getElementById('adminPanel').style.display='none'" style="width:100%; background:#444; color:#fff; border:none; border-radius:10px; padding:10px; margin-top:5px; cursor:pointer;">إغلاق</button>
+    </div>
+
+    <div class="header" onclick="checkAdmin()">
+        <h1 id="disp_title">Helmy Card 🔗</h1>
+        <span id="disp_warn" style="color:#ff4d4d; font-size:12px; font-weight:bold;"></span>
         <div class="copy-box" onclick="copyId()">
-            ID سحب Karak chat: <b id="adminId">800050</b><br>
-            الاسم: <b>Helmy fire</b><br>
-            <small>اضغط هنا لنسخ الايدي وارسل الراتب 👆</small>
+            ID سحب: <b id="disp_aid"></b><br>
+            الاسم: <b id="disp_aname"></b><br>
+            <small>اضغط للنسخ 👆</small>
         </div>
     </div>
 
-    <div class="input-group">
-        <label>🆔 الي سحبت منو id</label>
-        <input type="text" id="user_id" placeholder="أدخل ID الخاص بك" required>
-    </div>
-
-    <div class="input-group">
-        <label>👤 اسم الوكيل (اختياري)</label>
-        <input type="text" id="agent_name" placeholder="أدخل اسم الوكيل إن وجد">
-    </div>
+    <div class="input-group"><label id="lbl_uid"></label><input type="text" id="user_id"></div>
+    <div class="input-group"><label id="lbl_agent"></label><input type="text" id="agent_name"></div>
 
     <div class="input-group">
         <label>طريقة الدفع</label>
@@ -130,168 +125,174 @@
             <option value="فودافون كاش">فودافون كاش</option>
             <option value="اتصالات كاش">اتصالات كاش</option>
             <option value="أورنج كاش">أورنج كاش</option>
-            <option value="كود الوكيل في المنصة">كود الوكيل في المنصة (سعر خاص)</option>
+            <option value="كود الوكيل">كود الوكيل (سعر خاص)</option>
         </select>
     </div>
 
     <div class="input-group">
         <label>الدولار</label>
-        <input type="number" id="dollars" placeholder="أدخل عدد الدولارات" oninput="calculate()" required>
+        <input type="number" id="dollars" placeholder="0.00" oninput="calculate()">
     </div>
 
-    <div class="calc-box">
-        <div class="calc-value" id="res-egp">الإجمالي: 0.00 ج.م</div>
-    </div>
+    <div class="calc-box"><div class="calc-value" id="res-egp">الإجمالي: 0.00 ج.م</div></div>
 
-    <div class="input-group">
-        <label>رقم الاستلام</label>
-        <input type="text" id="wallet" placeholder="الرقم الذي سيصلك عليه المبلغ" required>
-        <span class="hint-text">اذا كان الرقم غير 010 يتم خصم عمولة التحويل تلقائياً.</span>
-    </div>
-
-    <div class="input-group">
-        <label>إرفاق صورة التحويل (إجباري)</label>
-        <label for="screenshot" class="file-label" id="fileLabel">
-            <span id="labelText">📸 اضغط لاختيار صورة التحويل</span>
-            <input type="file" id="screenshot" accept="image/*" style="display:none" onchange="updateLabel()" required>
-        </label>
-    </div>
+    <div class="input-group"><label>رقم الاستلام</label><input type="text" id="wallet" placeholder="01xxxxxxxxx"></div>
+    <div class="input-group"><label>صورة التحويل</label><input type="file" id="screenshot" accept="image/*"></div>
 
     <button onclick="submitForm()" id="submitBtn">إرسال الطلب الآن 🚀</button>
 </div>
-
-<div id="copyToast">تم نسخ الأيدي بنجاح ✅</div>
 
 <div id="invoiceOverlay">
     <div class="invoice-box">
         <div class="inv-header">فاتورة سحب راتب ✅</div>
         <div class="inv-item"><span class="inv-label">ID الحساب:</span> <span class="inv-value" id="inv-uid"></span></div>
-        <div class="inv-item"><span class="inv-label">اسم الوكيل:</span> <span class="inv-value" id="inv-agent"></span></div>
-        <div class="inv-item"><span class="inv-label">المبلغ بالدولار:</span> <span class="inv-value" id="inv-usd"></span></div>
-        <div class="inv-item"><span class="inv-label">المبلغ بالمصري:</span> <span class="inv-value" id="inv-egp"></span></div>
-        <div class="inv-item"><span class="inv-label">طريقة الاستلام:</span> <span class="inv-value" id="inv-method"></span></div>
+        <div class="inv-item"><span class="inv-label">الوكيل:</span> <span class="inv-value" id="inv-agent"></span></div>
+        <div class="inv-item"><span class="inv-label">المبلغ:</span> <span class="inv-value" id="inv-egp"></span></div>
+        <div class="inv-item"><span class="inv-label">الطريقة:</span> <span class="inv-value" id="inv-method"></span></div>
         <div class="inv-item"><span class="inv-label">اليوم:</span> <span class="inv-value" id="inv-day"></span></div>
-        <div class="inv-item"><span class="inv-label">التاريخ:</span> <span class="inv-value" id="inv-time" style="font-size: 11px;"></span></div>
-        
-        <div class="thanks-note">
-            شكرًا لثقتك بنا وبالتعامل مع Helmy Card 🔗<br>
-            نتمنى لك دائماً تجربة مميزة وموفقة. ☕
-        </div>
-
-        <button onclick="location.reload()" style="background:var(--gold); color:#000; border:none; width:100%; padding:15px; border-radius:12px; cursor:pointer; font-weight: bold; margin-top: 20px;">إغلاق وحفظ</button>
+        <div class="inv-item"><span class="inv-label">التاريخ:</span> <span class="inv-value" id="inv-time" style="font-size:11px;"></span></div>
+        <button onclick="location.reload()" class="admin-save-btn">إغلاق وحفظ</button>
     </div>
 </div>
 
 <script>
-    const SHEET_URL = 'https://sheetdb.io/api/v1/5t77aw7docius?sheet=Karak chat';
+    // 🔗 تهيئة Firebase Karak (بناءً على الصور والكونفج)
+    const firebaseConfig = {
+        apiKey: "AIzaSyDp1PmSbyiyP-cEZyPy9sK3FnKKKhbnJKQ",
+        authDomain: "karak-13101.firebaseapp.com",
+        projectId: "karak-13101",
+        storageBucket: "karak-13101.firebasestorage.app",
+        messagingSenderId: "631441806649",
+        appId: "1:631441806649:web:7144b2a714bfa0698f84e8",
+        databaseURL: "https://karak-13101-default-rtdb.firebaseio.com"
+    };
 
-    function updateLabel() {
-        const file = document.getElementById('screenshot').files[0];
-        if(file) document.getElementById('labelText').innerText = "✅ تم اختيار: " + file.name;
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // القيم الافتراضية
+    let config = {
+        sheet: 'https://sheetdb.io/api/v1/5t77aw7docius?sheet=Karak chat',
+        token: "8493256102:AAFuFPixyivycVPImhz7dMAtpcP0-NsZMpk",
+        chatid: "7054064246",
+        title: "Helmy Card 🔗", warn: "يستغرق تأكيد التارجت وإرسال الأموال 24 ساعة",
+        aid: "800050", aname: "Helmy fire",
+        luid: "🆔 الأيدي المسحوب منه", lagent: "👤 اسم الوكيل",
+        rv: 45, ra: 46.5
+    };
+
+    // مزامنة حية سحابية
+    db.ref('settings').on('value', (snap) => {
+        if(snap.val()) {
+            config = { ...config, ...snap.val() };
+            applyConfig();
+        } else {
+            db.ref('settings').set(config);
+        }
+    });
+
+    function applyConfig() {
+        document.getElementById('disp_title').innerText = config.title;
+        document.getElementById('disp_warn').innerText = config.warn;
+        document.getElementById('disp_aid').innerText = config.aid;
+        document.getElementById('disp_aname').innerText = config.aname;
+        document.getElementById('lbl_uid').innerText = config.luid;
+        document.getElementById('lbl_agent').innerText = config.lagent;
+        
+        // تعبئة لوحة التحكم
+        document.getElementById('set_sheet').value = config.sheet;
+        document.getElementById('set_token').value = config.token;
+        document.getElementById('set_chatid').value = config.chatid;
+        document.getElementById('set_title').value = config.title;
+        document.getElementById('set_warn').value = config.warn;
+        document.getElementById('set_aid').value = config.aid;
+        document.getElementById('set_aname').value = config.aname;
+        document.getElementById('set_luid').value = config.luid;
+        document.getElementById('set_lagent').value = config.lagent;
+        document.getElementById('r_v').value = config.rv;
+        document.getElementById('r_a').value = config.ra;
+        calculate();
     }
 
-    function copyId() {
-        const idText = document.getElementById('adminId').innerText;
-        navigator.clipboard.writeText(idText).then(() => {
-            const toast = document.getElementById("copyToast");
-            toast.className = "show";
-            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 2000);
+    function checkAdmin() { if(prompt("كلمة سر الإدارة:") === "1997") document.getElementById('adminPanel').style.display='block'; }
+
+    function saveToCloud() {
+        const newData = {
+            sheet: document.getElementById('set_sheet').value,
+            token: document.getElementById('set_token').value,
+            chatid: document.getElementById('set_chatid').value,
+            title: document.getElementById('set_title').value,
+            warn: document.getElementById('set_warn').value,
+            aid: document.getElementById('set_aid').value,
+            aname: document.getElementById('set_aname').value,
+            luid: document.getElementById('set_luid').value,
+            lagent: document.getElementById('set_lagent').value,
+            rv: parseFloat(document.getElementById('r_v').value),
+            ra: parseFloat(document.getElementById('r_a').value)
+        };
+        db.ref('settings').set(newData).then(() => {
+            alert("تم التحديث السحابي الشامل ✅");
+            document.getElementById('adminPanel').style.display='none';
         });
     }
 
     function calculate() {
-        const usd = document.getElementById('dollars').value;
-        const method = document.getElementById('method').value;
-        const rate = (method === "كود الوكيل في المنصة") ? 46.50 : 45;
+        const usd = document.getElementById('dollars').value || 0;
+        const rate = document.getElementById('method').value.includes("الوكيل") ? config.ra : config.rv;
         const egp = (usd * rate).toFixed(2);
-        document.getElementById('res-egp').innerText = usd > 0 ? "الإجمالي: " + egp + " ج.م" : "الإجمالي: 0.00 ج.م";
+        document.getElementById('res-egp').innerText = "الإجمالي: " + egp + " ج.م";
+        return egp;
     }
 
     async function submitForm() {
         const btn = document.getElementById('submitBtn');
-        const userId = document.getElementById('user_id').value;
-        const agentName = document.getElementById('agent_name').value || "لا يوجد";
-        const usdValue = document.getElementById('dollars').value;
-        const method = document.getElementById('method').value;
+        const uid = document.getElementById('user_id').value;
+        const agent = document.getElementById('agent_name').value || "لا يوجد";
+        const usdVal = document.getElementById('dollars').value;
         const wallet = document.getElementById('wallet').value;
-        const photoFile = document.getElementById('screenshot').files[0];
+        const photo = document.getElementById('screenshot').files[0];
+        const method = document.getElementById('method').value;
 
-        if(!userId || !usdValue || !wallet || !photoFile) { 
-            alert("يرجى إكمال جميع البيانات وإرفاق صورة التحويل!"); 
-            return; 
-        }
-
-        btn.disabled = true;
-        btn.innerText = "جاري معالجة طلبك...";
+        if(!uid || !usdVal || !wallet || !photo) return alert("اكمل البيانات!");
+        btn.disabled = true; btn.innerText = "جاري الإرسال...";
 
         try {
-            const response = await fetch(SHEET_URL);
-            const dataSheet = await response.json();
-            
-            const fiveDaysAgo = new Date();
-            fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
-
-            const isDuplicate = dataSheet.some(row => {
-                if(!row["التاريخ"]) return false;
-                const parts = row["التاريخ"].split(',')[0].split('/');
-                const rowDate = new Date(parts[2], parts[1]-1, parts[0]); 
-                return row["الأيدي"] === userId && rowDate >= fiveDaysAgo;
-            });
-
-            if (isDuplicate) {
-                alert("عذراً، هذا الأيدي قام بعملية سحب خلال الـ 5 أيام الماضية.");
-                btn.disabled = false; btn.innerText = "إرسال الطلب الآن 🚀";
-                return;
-            }
-
+            const egpVal = calculate();
             const now = new Date();
             const days = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
             const currentDay = days[now.getDay()];
-            const dateStr = now.toLocaleDateString('en-GB') + ", " + now.toLocaleTimeString('ar-EG');
-            
-            const finalRate = (method === "كود الوكيل في المنصة") ? 46.50 : 45;
-            const egpVal = (usdValue * finalRate).toFixed(2);
+            const dateStr = now.toLocaleDateString('en-GB');
+            const timeStr = now.toLocaleTimeString('ar-EG');
 
-            const token = "8493256102:AAFuFPixyivycVPImhz7dMAtpcP0-NsZMpk";
-            const chat_id = "7054064246";
-            const msg = `🧾 *طلب سحب جديد Karak chat*\n\n🆔 *ID:* ${userId}\n👤 *الوكيل:* ${agentName}\n💵 *المبلغ:* ${usdValue} $\n🇪🇬 *المصري:* ${egpVal} ج.م\n💳 *الطريقة:* ${method}\n🏦 *رقم الاستلام:* ${wallet}\n📅 *اليوم:* ${currentDay}\n⏰ *التاريخ:* ${dateStr}`;
+            // إرسال تليجرام
+            const fd = new FormData();
+            fd.append('chat_id', config.chatid); fd.append('photo', photo);
+            fd.append('caption', `🧾 *طلب جديد*\n🆔 الأيدي: \`${uid}\`\n👤 الوكيل: ${agent}\n💵 دولار: ${usdVal}$\n🇪🇬 مصري: ${egpVal}\n💳 طريقة: ${method}\n🏦 محفظة: \`${wallet}\`\n📅 اليوم: ${currentDay}\n⏰ التاريخ: ${dateStr}`);
+            await fetch(`https://api.telegram.org/bot${config.token}/sendPhoto`, { method: 'POST', body: fd });
 
-            const formData = new FormData();
-            formData.append('chat_id', chat_id);
-            formData.append('photo', photoFile);
-            formData.append('caption', msg);
-            formData.append('parse_mode', 'Markdown');
-            await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: formData });
-
-            await fetch(SHEET_URL, {
+            // إرسال إكسل
+            await fetch(config.sheet, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ data: [{
-                    "الأيدي": userId,
-                    "اسم الوكيل": agentName,
-                    "الدولار": usdValue + " $",
-                    "المصري": egpVal + " ج.م",
-                    "طريقة السحب": method,
-                    "بيانات المحفظة": "'" + wallet,
-                    "التاريخ": dateStr,
-                    "اليوم": currentDay
+                    "الأيدي": uid, "اسم الوكيل": agent, "الدولار": usdVal + " $",
+                    "المصري": egpVal + " ج.م", "طريقة السحب": method,
+                    "بيانات المحفظة": "'" + wallet, "اليوم": currentDay, "التاريخ": dateStr + " " + timeStr
                 }]})
             });
 
-            document.getElementById('inv-uid').innerText = userId;
-            document.getElementById('inv-agent').innerText = agentName;
-            document.getElementById('inv-usd').innerText = usdValue + " $";
+            document.getElementById('inv-uid').innerText = uid;
+            document.getElementById('inv-agent').innerText = agent;
             document.getElementById('inv-egp').innerText = egpVal + " ج.م";
             document.getElementById('inv-method').innerText = method;
             document.getElementById('inv-day').innerText = currentDay;
-            document.getElementById('inv-time').innerText = dateStr;
+            document.getElementById('inv-time').innerText = dateStr + " " + timeStr;
             document.getElementById('invoiceOverlay').style.display = 'flex';
 
-        } catch (e) { 
-            alert("حدث خطأ تقني!"); 
-            btn.disabled = false; btn.innerText = "إرسال الطلب الآن 🚀";
-        }
+        } catch(e) { alert("خطأ!"); btn.disabled = false; }
     }
+
+    function copyId() { navigator.clipboard.writeText(config.aid); alert("تم النسخ ✅"); }
 </script>
 </body>
 </html>
